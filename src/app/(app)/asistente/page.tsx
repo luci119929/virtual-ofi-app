@@ -1,6 +1,8 @@
 import { SectionPlaceholder } from "@/components/layout/section-placeholder";
+import { requireAccess } from "@/lib/auth/dal";
 
-export default function AsistentePage() {
+export default async function AsistentePage() {
+  await requireAccess("/asistente");
   return (
     <SectionPlaceholder
       title="Asistente IA"

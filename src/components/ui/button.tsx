@@ -16,7 +16,7 @@ const sizes: Record<Size, string> = {
 };
 
 const baseClass =
-  "inline-flex w-full items-center justify-center rounded-pill border-[1.5px] font-bold uppercase tracking-[0.02em] transition-transform duration-150 cursor-pointer";
+  "inline-flex w-full items-center justify-center rounded-pill border-[1.5px] font-bold uppercase tracking-[0.02em] transition-transform duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0";
 
 type CommonProps = {
   variant?: Variant;

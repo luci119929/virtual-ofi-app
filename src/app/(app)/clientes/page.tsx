@@ -1,6 +1,8 @@
 import { SectionPlaceholder } from "@/components/layout/section-placeholder";
+import { requireAccess } from "@/lib/auth/dal";
 
-export default function ClientesPage() {
+export default async function ClientesPage() {
+  await requireAccess("/clientes");
   return (
     <SectionPlaceholder
       title="Clientes / Leads"

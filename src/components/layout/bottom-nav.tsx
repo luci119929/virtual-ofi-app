@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Role } from "@prisma/client";
 import { mobileNavItems } from "./nav-config";
+import { canAccess, type Section } from "@/lib/auth/rbac";
 import { cn } from "@/lib/cn";
 
 /** Barra de navegación inferior — sólo visible en móvil (< md). */
-export function BottomNav() {
+export function BottomNav({ role }: { role: Role }) {
   const pathname = usePathname();
+  const items = mobileNavItems.filter((i) =>
+    canAccess(i.href as Section, role),
+  );
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-cream/10 bg-ink/95 px-2 py-2 backdrop-blur md:hidden">
-      {mobileNavItems.map(({ href, label, Icon }) => {
+      {items.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link

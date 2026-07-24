@@ -1,6 +1,8 @@
 import { SectionPlaceholder } from "@/components/layout/section-placeholder";
+import { requireAccess } from "@/lib/auth/dal";
 
-export default function AgendaPage() {
+export default async function AgendaPage() {
+  await requireAccess("/agenda");
   return (
     <SectionPlaceholder
       title="Agenda & Visitas"

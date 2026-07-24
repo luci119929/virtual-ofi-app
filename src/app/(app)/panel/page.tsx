@@ -1,15 +1,26 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { Tile } from "@/components/ui/tile";
 import { Chip } from "@/components/ui/chip";
+import { requireAccess } from "@/lib/auth/dal";
+import { roleLabels } from "@/lib/auth/rbac";
 
 /**
  * Panel de control — responde "¿qué hacer ahora?".
  * Los datos son de muestra hasta conectar el backend (Fase 4+).
  */
-export default function PanelPage() {
+export default async function PanelPage() {
+  const user = await requireAccess("/panel");
+  const firstName = user.name.split(" ")[0];
+
   return (
     <>
-      <PageHeader title="Panel de control" meta="Agente · Equipo Centro" />
+      <PageHeader
+        title="Panel de control"
+        meta={`${roleLabels[user.role]} · ${user.organization.name}`}
+      />
+      <p className="-mt-2 mb-5 text-[14px] text-cream-dim">
+        Hola {firstName} 👋 Esto es lo que necesita tu atención hoy.
+      </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile tone="orange" value="12" label="Mensajes pendientes" />

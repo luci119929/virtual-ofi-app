@@ -134,11 +134,12 @@ model User {
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   orgId        String
   name         String
-  email        String
+  email        String   @unique
   passwordHash String
   role         Role     @default(AGENT)
   phone        String?
   active       Boolean  @default(true)
+  lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -153,7 +154,6 @@ model User {
   auditLogs       AuditLog[]
   aiInteractions  AiInteraction[]
 
-  @@unique([orgId, email])
   @@index([orgId, role])
 }
 

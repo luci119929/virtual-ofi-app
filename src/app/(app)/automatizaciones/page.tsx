@@ -1,6 +1,8 @@
 import { SectionPlaceholder } from "@/components/layout/section-placeholder";
+import { requireAccess } from "@/lib/auth/dal";
 
-export default function AutomatizacionesPage() {
+export default async function AutomatizacionesPage() {
+  await requireAccess("/automatizaciones");
   return (
     <SectionPlaceholder
       title="Automatizaciones"

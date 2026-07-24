@@ -1,6 +1,8 @@
 import { SectionPlaceholder } from "@/components/layout/section-placeholder";
+import { requireAccess } from "@/lib/auth/dal";
 
-export default function PipelinePage() {
+export default async function PipelinePage() {
+  await requireAccess("/pipeline");
   return (
     <SectionPlaceholder
       title="Pipeline comercial"

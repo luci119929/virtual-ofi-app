@@ -1,6 +1,8 @@
 import { SectionPlaceholder } from "@/components/layout/section-placeholder";
+import { requireAccess } from "@/lib/auth/dal";
 
-export default function AuditoriaPage() {
+export default async function AuditoriaPage() {
+  await requireAccess("/auditoria");
   return (
     <SectionPlaceholder
       title="Auditoría"
