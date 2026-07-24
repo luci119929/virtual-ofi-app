@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* ============================================================
+   VIRTUAL OFI · Fuentes de marca
+   Logo/títulos: Architype Aubette · Textos: Helvetica Now.
+   Cuando tengas los archivos licenciados, dejá los .woff2 en
+   /public/fonts y descomentá estos bloques. Mientras tanto se
+   usan los fallbacks del sistema (look muy cercano).
+   ------------------------------------------------------------
+@font-face{
+  font-family:"Architype Aubette";
+  src:url("/fonts/architype-aubette.woff2") format("woff2");
+  font-weight:400 900; font-display:swap;
+}
+@font-face{
+  font-family:"Helvetica Now Text";
+  src:url("/fonts/helvetica-now-text.woff2") format("woff2");
+  font-weight:400 700; font-display:swap;
+}
+@font-face{
+  font-family:"Helvetica Now Display";
+  src:url("/fonts/helvetica-now-display.woff2") format("woff2");
+  font-weight:700 900; font-display:swap;
+}
+   ============================================================ */
+
+@theme {
+  /* Paleta de marca */
+  --color-cream: #f6f0cb;
+  --color-cream-dim: #e7dfb6;
+  --color-maroon-deep: #4a1714;
+  --color-maroon: #7e2a22;
+  --color-ink: #1a0d0b;
+  --color-orange: #ef9b3c;
+  --color-red: #e0391d;
+  --color-red-bright: #e8331b;
+  --color-leaf: #5fa35a;
+
+  /* Tipografía */
+  --font-sans: "Helvetica Now Text", "Helvetica Now", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "Architype Aubette", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* Radios */
+  --radius-card: 20px;
+  --radius-pill: 999px;
+}
+
+:root {
+  color-scheme: dark; /* La marca vive en un único mundo cálido y oscuro. */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-cream);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Foco accesible y visible en toda la app */
+:focus-visible {
+  outline: 3px solid var(--color-orange);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Utilidades de marca ---------- */
+
+/* Degradado firma (splash, auth, portadas) */
+.brand-gradient {
+  background: radial-gradient(
+    130% 100% at 50% -10%,
+    var(--color-orange) 0%,
+    var(--color-red) 40%,
+    var(--color-maroon) 70%,
+    var(--color-ink) 100%
+  );
+}
+
+/* Fondo de la app (superficies de trabajo) */
+.app-gradient {
+  background: linear-gradient(180deg, var(--color-maroon-deep), var(--color-ink));
+}
+
+/* Textura de grano sutil, se pone sobre cualquier fondo */
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

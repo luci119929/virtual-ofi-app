@@ -1,0 +1,453 @@
+// Virtual Ofi — Esquema de datos (Fase 1)
+// SaaS multi-tenant: toda entidad de negocio pertenece a una Organization.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ------------------------------------------------------------------
+// Enums
+// ------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  AGENT
+  OWNER // propietario con portal de seguimiento
+}
+
+enum OperationType {
+  VENTA
+  ALQUILER
+  TEMPORAL
+}
+
+enum PropertyStatus {
+  BORRADOR
+  ACTIVA
+  RESERVADA
+  VENDIDA
+  ALQUILADA
+  INACTIVA
+}
+
+enum MediaType {
+  FOTO
+  VIDEO
+  PLANO
+  DOCUMENTO
+}
+
+enum LeadSource {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  WEB
+  PORTAL
+  MANUAL
+  REFERIDO
+}
+
+enum InterestLevel {
+  FRIO
+  TIBIO
+  CALIENTE
+}
+
+enum DealStage {
+  NUEVO
+  CONTACTADO
+  VISITA
+  NEGOCIACION
+  CERRADO
+  PERDIDO
+}
+
+enum TaskType {
+  LLAMADA
+  WHATSAPP
+  EMAIL
+  VISITA
+  SEGUIMIENTO
+  OTRO
+}
+
+enum TaskStatus {
+  PENDIENTE
+  COMPLETADA
+  VENCIDA
+}
+
+enum VisitStatus {
+  AGENDADA
+  CONFIRMADA
+  REALIZADA
+  CANCELADA
+  NO_ASISTIO
+}
+
+enum CommunicationChannel {
+  LLAMADA
+  EMAIL
+  WHATSAPP
+  NOTA
+  REUNION
+}
+
+enum AiInteractionType {
+  RESUMEN
+  SUGERENCIA
+  REDACCION
+  ANALISIS
+}
+
+// ------------------------------------------------------------------
+// Tenant + Usuarios
+// ------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  plan      String   @default("free")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  properties       Property[]
+  clients          Client[]
+  deals            Deal[]
+  tasks            Task[]
+  visits           Visit[]
+  communications   Communication[]
+  automationRules  AutomationRule[]
+  auditLogs        AuditLog[]
+  aiInteractions   AiInteraction[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId        String
+  name         String
+  email        String
+  passwordHash String
+  role         Role     @default(AGENT)
+  phone        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  properties      Property[]        @relation("PropertyAgent")
+  assignedClients Client[]          @relation("ClientAgent")
+  deals           Deal[]            @relation("DealAgent")
+  tasks           Task[]            @relation("TaskAssignee")
+  visits          Visit[]           @relation("VisitAgent")
+  communications  Communication[]
+  propertyChanges PropertyHistory[]
+  stageChanges    DealStageHistory[]
+  auditLogs       AuditLog[]
+  aiInteractions  AiInteraction[]
+
+  @@unique([orgId, email])
+  @@index([orgId, role])
+}
+
+// ------------------------------------------------------------------
+// Propiedades
+// ------------------------------------------------------------------
+
+model Property {
+  id        String         @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  agent     User?          @relation("PropertyAgent", fields: [agentId], references: [id])
+  agentId   String?
+
+  title     String
+  operation OperationType  @default(VENTA)
+  status    PropertyStatus @default(BORRADOR)
+  price     Decimal?       @db.Decimal(14, 2)
+  currency  String         @default("USD")
+
+  address   String?
+  city      String?
+  lat       Float?
+  lng       Float?
+
+  // Características flexibles: ambientes, m2, baños, cochera, etc.
+  features  Json           @default("{}")
+
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  media   PropertyMedia[]
+  history PropertyHistory[]
+  deals   Deal[]
+  matches Match[]
+  visits  Visit[]
+
+  @@index([orgId, status])
+  @@index([orgId, operation])
+}
+
+model PropertyMedia {
+  id         String    @id @default(cuid())
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String
+  url        String
+  type       MediaType @default(FOTO)
+  order      Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([propertyId])
+}
+
+// Historial de cambios de una propiedad (requisito #4)
+model PropertyHistory {
+  id           String   @id @default(cuid())
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId   String
+  user         User?    @relation(fields: [userId], references: [id])
+  userId       String?
+  fieldChanged String
+  oldValue     String?
+  newValue     String?
+  changedAt    DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+// ------------------------------------------------------------------
+// Clientes / Leads
+// ------------------------------------------------------------------
+
+model Client {
+  id        String        @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  agent     User?         @relation("ClientAgent", fields: [agentId], references: [id])
+  agentId   String?
+
+  name          String
+  email         String?
+  phone         String?
+  source        LeadSource    @default(MANUAL)
+  interestLevel InterestLevel @default(FRIO)
+  score         Int           @default(0) // 0-100, calculado por comportamiento
+
+  // Necesidades: zona, tipo, presupuesto, ambientes, etc.
+  requirements  Json          @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deals          Deal[]
+  matches        Match[]
+  tasks          Task[]
+  visits         Visit[]
+  communications Communication[]
+
+  @@index([orgId, interestLevel])
+  @@index([orgId, agentId])
+}
+
+// ------------------------------------------------------------------
+// Pipeline comercial
+// ------------------------------------------------------------------
+
+model Deal {
+  id        String    @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  String
+  property  Property? @relation(fields: [propertyId], references: [id])
+  propertyId String?
+  agent     User?     @relation("DealAgent", fields: [agentId], references: [id])
+  agentId   String?
+
+  stage     DealStage @default(NUEVO)
+  value     Decimal?  @db.Decimal(14, 2)
+  currency  String    @default("USD")
+  lostReason String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  history DealStageHistory[]
+  tasks   Task[]
+
+  @@index([orgId, stage])
+}
+
+model DealStageHistory {
+  id        String    @id @default(cuid())
+  deal      Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId    String
+  fromStage DealStage?
+  toStage   DealStage
+  movedBy   User?     @relation(fields: [userId], references: [id])
+  userId    String?
+  movedAt   DateTime  @default(now())
+
+  @@index([dealId])
+}
+
+// ------------------------------------------------------------------
+// Matching inteligente (requisito #7)
+// ------------------------------------------------------------------
+
+model Match {
+  id         String   @id @default(cuid())
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId   String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String
+  score      Int // 0-100 % de coincidencia
+  reasons    Json     @default("{}") // por qué coincide / qué falta
+  createdAt  DateTime @default(now())
+
+  @@unique([clientId, propertyId])
+  @@index([propertyId])
+}
+
+// ------------------------------------------------------------------
+// Tareas y seguimiento (requisito #8)
+// ------------------------------------------------------------------
+
+model Task {
+  id        String     @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  assignee  User?      @relation("TaskAssignee", fields: [userId], references: [id])
+  userId    String?
+  client    Client?    @relation(fields: [clientId], references: [id])
+  clientId  String?
+  deal      Deal?      @relation(fields: [dealId], references: [id])
+  dealId    String?
+
+  title         String
+  type          TaskType   @default(SEGUIMIENTO)
+  status        TaskStatus @default(PENDIENTE)
+  dueDate       DateTime?
+  autoGenerated Boolean    @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId, status])
+  @@index([userId, status])
+}
+
+// ------------------------------------------------------------------
+// Agenda / Visitas (requisito #9)
+// ------------------------------------------------------------------
+
+model Visit {
+  id         String      @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId      String
+  property   Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String
+  client     Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId   String
+  agent      User?       @relation("VisitAgent", fields: [agentId], references: [id])
+  agentId    String?
+
+  scheduledAt DateTime
+  status      VisitStatus @default(AGENDADA)
+  // Feedback post-visita: asistió, nivel de interés, próximos pasos
+  feedback    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId, scheduledAt])
+  @@index([agentId, scheduledAt])
+}
+
+// ------------------------------------------------------------------
+// Comunicaciones (requisito #12)
+// ------------------------------------------------------------------
+
+model Communication {
+  id        String               @id @default(cuid())
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  client    Client?              @relation(fields: [clientId], references: [id])
+  clientId  String?
+  user      User?                @relation(fields: [userId], references: [id])
+  userId    String?
+
+  channel   CommunicationChannel
+  content   String
+  templateId String?
+  createdAt DateTime             @default(now())
+
+  @@index([orgId, clientId])
+}
+
+// ------------------------------------------------------------------
+// Automatizaciones (requisito #10)
+// ------------------------------------------------------------------
+
+model AutomationRule {
+  id        String   @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  name      String
+  trigger    Json // evento que dispara la regla
+  conditions Json    @default("[]")
+  actions    Json // acciones a ejecutar
+  active     Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId, active])
+}
+
+// ------------------------------------------------------------------
+// Auditoría inmutable (requisito #15)
+// ------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([orgId, entity])
+  @@index([orgId, createdAt])
+}
+
+// ------------------------------------------------------------------
+// Trazabilidad de la IA (requisito #11)
+// ------------------------------------------------------------------
+
+model AiInteraction {
+  id        String            @id @default(cuid())
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId     String
+  user      User?             @relation(fields: [userId], references: [id])
+  userId    String?
+  type      AiInteractionType
+  inputRef  String? // referencia a la entidad de origen (no inventa datos)
+  output    String
+  model     String?
+  createdAt DateTime          @default(now())
+
+  @@index([orgId, type])
+}
